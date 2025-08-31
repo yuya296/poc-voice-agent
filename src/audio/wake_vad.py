@@ -1,6 +1,7 @@
 import webrtcvad
 import numpy as np
 import asyncio
+import time
 from typing import AsyncIterator
 from collections import deque
 from openwakeword import Model as WakeWordModel
@@ -55,6 +56,8 @@ class WakeAndVAD:
         self.silence_threshold = 75  # 75フレーム（約1.5秒）の無音で区間終了
         self.status_counter = 0  # ステータス表示用カウンタ
         self.speech_detected = False  # 音声検知フラグ
+        self.paused = False  # 音声処理一時停止フラグ
+        self.cooldown_until = 0  # クールダウン終了時刻（時間ベース）
 
     def _detect_wake_word(self, audio_chunk: np.ndarray) -> bool:
         # 簡易検出モードの場合
@@ -77,12 +80,17 @@ class WakeAndVAD:
             audio_int16 = (audio_chunk * 32767).astype(np.int16)
             prediction = self.wake_model.predict(audio_int16)
             
+            # クールダウン中は閾値を高くする
+            current_time = time.time()
+            threshold = 0.5 if current_time < self.cooldown_until else 0.3
+            
             # デバッグ用：全ての予測結果をログ出力（高スコアのみ）
             for keyword, score in prediction.items():
                 if score > 0.05:  # 0.05以上の場合のみログ
-                    logger.debug(f"Wake word prediction: {keyword} (score: {score:.3f})")
+                    cooldown_status = " (cooldown)" if current_time < self.cooldown_until else ""
+                    logger.debug(f"Wake word prediction: {keyword} (score: {score:.3f}, threshold: {threshold:.1f}){cooldown_status}")
                 
-                if score > 0.3:  # 閾値を0.3に下げる
+                if score > threshold:
                     logger.info(f"Wake word detected: {keyword} (score: {score:.2f})")
                     return True
             return False
@@ -107,10 +115,31 @@ class WakeAndVAD:
             logger.debug(f"VAD processing error: {e}")
             return False
 
+    def pause(self):
+        """音声処理を一時停止"""
+        self.paused = True
+        logger.debug("Audio processing paused")
+    
+    def resume(self):
+        """音声処理を再開"""
+        self.paused = False
+        # TTS再生後は必ずwake word待機状態にリセット
+        self.is_awake = False
+        self.speech_detected = False
+        self.speech_buffer.clear()
+        self.silence_counter = 0
+        # TTS終了後2秒間はクールダウン（高い閾値を適用）
+        self.cooldown_until = time.time() + 2.0
+        logger.debug("Audio processing resumed - reset to wake word waiting state with 2s cooldown")
+
     async def iter_utterances(self, audio_stream: AsyncIterator[np.ndarray]) -> AsyncIterator[np.ndarray]:
         logger.info("Starting wake word + VAD processing")
         
         async for chunk in audio_stream:
+            # 一時停止中はスキップ
+            if self.paused:
+                continue
+                
             # Wake word検出（未起動時のみ）
             if not self.is_awake:
                 self.status_counter += 1

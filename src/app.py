@@ -112,13 +112,22 @@ class VoiceAgent:
                 print()  # 改行
                 logger.info(f"Agent response: {response_text}")
                 
-                # 文単位に分割してTTS（テキストから再生成）
-                async def text_to_tokens():
-                    for char in response_text:
-                        yield char
+                # TTS再生中は音声入力を一時停止
+                self.wake_vad.pause()
+                logger.debug("Audio input paused for TTS playback")
                 
-                sent_iter = sentence_stream(text_to_tokens())
-                await self.tts.speak_sentences(sent_iter)
+                try:
+                    # 文単位に分割してTTS（テキストから再生成）
+                    async def text_to_tokens():
+                        for char in response_text:
+                            yield char
+                    
+                    sent_iter = sentence_stream(text_to_tokens())
+                    await self.tts.speak_sentences(sent_iter)
+                finally:
+                    # TTS終了後に音声入力を再開
+                    self.wake_vad.resume()
+                    logger.debug("Audio input resumed after TTS playback")
                 
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received")
