@@ -24,3 +24,6 @@ __pycache__/
 .vscode/
 .idea/
 *.swp
+
+# Secrets
+.env

@@ -1,0 +1,47 @@
+audio:
+  device: null          # 既定 or sounddeviceで列挙名
+  rate: 16000
+  chunk_ms: 20
+  pre_roll_ms: 300      # 発話頭切れ対策
+
+wake:
+  enabled: true        # Wake Word有効
+  model_path: models/openwakeword/hey_nova.tflite
+  keyword: "hello"     # 表示用（実際は音声レベル検出）
+  use_simple_detection: true  # 簡易音声レベル検出を使用
+
+vad:
+  aggressiveness: 2     # 0-3
+
+asr:
+  model_size: small     # tiny/small
+  compute_type: int8
+  beam_size: 1
+  vad_filter: true
+
+llm:
+  gguf_path: models/llm/phi-3.5-mini-q4_k_m.gguf
+  ctx_size: 2048
+  n_threads: 4
+  n_gpu_layers: 0       # Piは0推奨
+  top_p: 0.9
+  top_k: 40
+  temp: 0.7
+  max_tokens: 256
+
+agent:
+  tools_enabled: [clock, iot_mock]
+  system_prompt_path: config/prompts/system_ja.txt
+
+tts:
+  piper_bin: piper      # PATHにある場合はそのまま
+  voice_dir: models/piper/ja-JP-voice
+  sentence_pause_ms: 120
+
+logging:
+  level: INFO
+  json_format: false
+
+privacy:
+  save_audio: false
+  save_text: true      # デバッグ用ログ（後でfalse推奨）
