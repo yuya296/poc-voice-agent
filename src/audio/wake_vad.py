@@ -19,13 +19,31 @@ class WakeAndVAD:
         # Wake Word初期化
         if wake_config.enabled and not wake_config.use_simple_detection:
             try:
-                self.wake_model = WakeWordModel()
-                logger.info(f"Wake word initialized: {wake_config.keyword}")
+                # パッケージ内の主要wake wordモデルを指定
+                import os
+                model_dir = "/Users/yuya/dev/poc-voice-agent/.venv/lib/python3.13/site-packages/openwakeword/resources/models"
+                wake_models = [
+                    os.path.join(model_dir, "alexa_v0.1.onnx"),
+                    os.path.join(model_dir, "hey_jarvis_v0.1.onnx"),
+                ]
+                
+                self.wake_model = WakeWordModel(wake_models)
+                # 利用可能なwake wordリストを取得
+                available_keywords = list(self.wake_model.prediction_buffer.keys()) if hasattr(self.wake_model, 'prediction_buffer') else []
+                logger.info(f"OpenWakeWord model initialized successfully")
+                logger.info(f"Available wake words: {available_keywords}")
+                
+                # modelsディクショナリからも確認
+                if hasattr(self.wake_model, 'models'):
+                    model_names = list(self.wake_model.models.keys())
+                    logger.info(f"Loaded models: {model_names}")
+                    
             except Exception as e:
-                logger.warning(f"Wake word model load failed: {e}")
+                logger.error(f"Wake word model load failed: {e}")
+                logger.error("Falling back to disabled wake word detection")
                 self.wake_model = None
         else:
-            if wake_config.enabled:
+            if wake_config.enabled and wake_config.use_simple_detection:
                 logger.info(f"Simple wake word detection enabled: '{wake_config.keyword}'")
             else:
                 logger.info("Wake word detection disabled")
@@ -34,31 +52,42 @@ class WakeAndVAD:
         self.is_awake = False
         self.speech_buffer = deque(maxlen=16000 * 5)  # 5秒分のバッファ
         self.silence_counter = 0
-        self.silence_threshold = 30  # 30フレーム（約600ms）の無音で区間終了
+        self.silence_threshold = 75  # 75フレーム（約1.5秒）の無音で区間終了
         self.status_counter = 0  # ステータス表示用カウンタ
+        self.speech_detected = False  # 音声検知フラグ
 
     def _detect_wake_word(self, audio_chunk: np.ndarray) -> bool:
-        if self.wake_model is None:
-            if self.wake_config.enabled and self.wake_config.use_simple_detection:
-                # 簡易的な音声レベル検出（何か話したら起動）
-                rms = np.sqrt(np.mean(audio_chunk ** 2))
-                if rms > 0.01:  # 閾値は調整可能
-                    return True
+        # 簡易検出モードの場合
+        if self.wake_config.enabled and self.wake_config.use_simple_detection:
+            rms = np.sqrt(np.mean(audio_chunk ** 2))
+            if rms > 0.01:  # 閾値は調整可能
+                return True
             return False
         
+        # OpenWakeWordモデル使用の場合
+        if self.wake_model is None:
+            return False  # モデルが初期化されていない場合は検知しない
+        
         try:
+            # OpenWakeWordの最小サンプル数をチェック（400サンプル = 25ms @ 16kHz）
+            if len(audio_chunk) < 400:
+                return False
+                
             # audio_chunkをint16に変換（openwakewordの要求形式）
             audio_int16 = (audio_chunk * 32767).astype(np.int16)
             prediction = self.wake_model.predict(audio_int16)
             
-            # 閾値を超えた場合にwake
+            # デバッグ用：全ての予測結果をログ出力（高スコアのみ）
             for keyword, score in prediction.items():
-                if score > 0.5:  # 閾値は調整可能
+                if score > 0.05:  # 0.05以上の場合のみログ
+                    logger.debug(f"Wake word prediction: {keyword} (score: {score:.3f})")
+                
+                if score > 0.3:  # 閾値を0.3に下げる
                     logger.info(f"Wake word detected: {keyword} (score: {score:.2f})")
                     return True
             return False
         except Exception as e:
-            logger.debug(f"Wake word detection error: {e}")
+            logger.error(f"Wake word detection error: {e}")
             return False
 
     def _is_speech(self, audio_chunk: np.ndarray, sample_rate: int = 16000) -> bool:
@@ -98,20 +127,22 @@ class WakeAndVAD:
             is_speech = self._is_speech(chunk)
             
             if is_speech:
+                if not self.speech_detected:
+                    self.speech_detected = True
+                    logger.info("Speech detection started")
                 self.speech_buffer.extend(chunk)
                 self.silence_counter = 0
-                # 最初の音声検出時のみログ出力
-                if len(self.speech_buffer) < 1000:  # 約0.06秒分
-                    logger.debug("Speech started")
             else:
-                self.silence_counter += 1
+                if self.speech_detected:
+                    self.silence_counter += 1
             
             # 無音が閾値を超えたら発話終了
-            if self.silence_counter >= self.silence_threshold and len(self.speech_buffer) > 0:
+            if self.speech_detected and self.silence_counter >= self.silence_threshold and len(self.speech_buffer) > 0:
                 utterance = np.array(list(self.speech_buffer))
                 self.speech_buffer.clear()
                 self.silence_counter = 0
+                self.speech_detected = False
                 self.is_awake = False  # 一度処理したら再度wake wordを待つ
                 
-                logger.info(f"Utterance captured: {len(utterance)/16000:.2f}s")
+                logger.info(f"Utterance completed: {len(utterance)/16000:.2f}s - returning to wake word detection")
                 yield utterance

@@ -13,8 +13,8 @@ class AudioConfig(BaseModel):
 class WakeConfig(BaseModel):
     enabled: bool = True
     model_path: str = "models/openwakeword/hey_nova.tflite"
-    keyword: str = "hello"
-    use_simple_detection: bool = True  # 簡易音声レベル検出を使用
+    keyword: str = "やあ"
+    use_simple_detection: bool = False  # OpenWakeWordモデルを使用
 
 
 class VADConfig(BaseModel):
@@ -51,7 +51,7 @@ class TTSConfig(BaseModel):
 
 
 class LoggingConfig(BaseModel):
-    level: str = "INFO"
+    level: str = "DEBUG"
     json_format: bool = False
 
 

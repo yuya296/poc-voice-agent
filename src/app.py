@@ -11,7 +11,7 @@ from .audio.asr import ASR
 from .nlp.llm import LocalLLM
 from .nlp.agent import Agent
 from .nlp.splitter import sentence_stream
-from .io.tts import PiperTTS
+from .io.voicevox_tts import VoicevoxTTS
 from .tools.clock import ClockTool
 from .tools.iot_mock import IoTMockTool
 
@@ -48,8 +48,8 @@ class VoiceAgent:
             if self.llm.llm is None:
                 logger.warning("LLM is not available - continuing without LLM functionality")
             
-            # TTS
-            self.tts = PiperTTS(self.config.tts)
+            # TTS (VOICEVOX)
+            self.tts = VoicevoxTTS(self.config.tts)
             
             # ツール初期化
             available_tools = {

@@ -7,7 +7,7 @@
 - Wake Word検出（"hey nova"）
 - 音声認識（faster-whisper）
 - ローカルLLM（llama-cpp-python）
-- 音声合成（Piper TTS）
+- 音声合成（VOICEVOX）
 - ツール統合（時計、IoTモック）
 
 ## セットアップ
@@ -40,28 +40,18 @@ wget -O models/llm/tinyllama-1.1b-chat-q4_K_M.gguf \
   https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.q4_K_M.gguf
 ```
 
-#### Piper TTS（音声合成）
+#### VOICEVOX TTS（音声合成）
 ```bash
-# Piperバイナリのインストール
-# macOS (Homebrew)
-brew install piper-tts
+# VOICEVOX Engineをダウンロード・起動
+# 公式サイト: https://voicevox.hiroshiba.jp/
 
-# または、GitHubリリースから直接ダウンロード
-# https://github.com/rhasspy/piper/releases
+# macOSの場合:
+# 1. 公式サイトからVOICEVOX Engineをダウンロード
+# 2. アプリケーションを起動（http://127.0.0.1:50021 でサーバーが開始）
+# 3. ブラウザで http://127.0.0.1:50021/docs にアクセスして動作確認
 
-# 日本語音声モデルのダウンロード
-mkdir -p models/piper/ja-JP-voice
-cd models/piper/ja-JP-voice
-
-# 例: 日本語女性音声
-curl -L -o ja_JP-haruka-medium.onnx \
-  https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/ja/ja_JP/haruka/medium/ja_JP-haruka-medium.onnx
-curl -L -o ja_JP-haruka-medium.onnx.json \
-  https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/ja/ja_JP/haruka/medium/ja_JP-haruka-medium.onnx.json
-
-# ファイル名を設定に合わせてリネーム
-mv ja_JP-haruka-medium.onnx model.onnx
-mv ja_JP-haruka-medium.onnx.json model.json
+# または、Dockerで起動（推奨）:
+docker run --rm -p 50021:50021 voicevox/voicevox_engine:cpu-ubuntu20.04-latest
 ```
 
 ## 実行
