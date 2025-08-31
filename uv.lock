@@ -947,6 +947,7 @@ dependencies = [
     { name = "soundfile" },
     { name = "torch" },
     { name = "torchaudio" },
+    { name = "tqdm" },
     { name = "transformers" },
     { name = "webrtcvad" },
 ]
@@ -972,6 +973,7 @@ requires-dist = [
     { name = "soundfile", specifier = ">=0.13.1" },
     { name = "torch", specifier = ">=2.8.0" },
     { name = "torchaudio", specifier = ">=2.8.0" },
+    { name = "tqdm", specifier = ">=4.67.1" },
     { name = "transformers", specifier = ">=4.56.0" },
     { name = "webrtcvad", specifier = ">=2.0.10" },
 ]

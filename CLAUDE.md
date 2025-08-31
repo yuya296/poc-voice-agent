@@ -92,6 +92,9 @@ uv sync
 # 新しいパッケージの追加 (uv が適切なバージョンを判断)
 uv add <package-name>
 
+# 必要なモデルファイルのダウンロード
+python scripts/download_models.py
+
 # 統合音声エージェント実行
 python -m src.app
 
