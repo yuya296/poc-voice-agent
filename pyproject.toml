@@ -1,0 +1,20 @@
+[project]
+name = "poc-voice-agent"
+version = "0.1.0"
+description = "PoC for VoiceAgent"
+readme = "README.md"
+requires-python = ">=3.13.5"
+dependencies = [
+    "faster-whisper>=1.2.0",
+    "librosa>=0.11.0",
+    "numpy>=1.26.0",
+    "pandas>=2.0.0",
+    "requests>=2.32.5",
+    "scipy>=1.11.0",
+    "sentencepiece>=0.2.1",
+    "sounddevice>=0.5.2",
+    "soundfile>=0.13.1",
+    "torch>=2.8.0",
+    "torchaudio>=2.8.0",
+    "transformers>=4.56.0",
+]
